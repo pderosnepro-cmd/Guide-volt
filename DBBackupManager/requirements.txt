@@ -16,17 +16,3 @@ pytz>=2023.0.0
 
 # Compression
 py7zr>=0.20.0
-
-# Notifications
-smtplib
-email
-
-# CLI
-argparse
-json
-
-# Logging
-logging
-
-# For MSSQL on Linux
-unixodbc-dev
