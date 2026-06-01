@@ -1,0 +1,32 @@
+# DBBackupManager - Dependencies
+# Database connectors
+pyodbc>=4.0.0
+psycopg2-binary>=2.9.0
+pymysql>=1.0.0
+mysql-connector-python>=8.0.0
+
+# GUI
+PyQt6>=6.4.0
+
+# Utilities
+python-dotenv>=1.0.0
+cryptography>=41.0.0
+schedule>=1.2.0
+pytz>=2023.0.0
+
+# Compression
+py7zr>=0.20.0
+
+# Notifications
+smtplib
+email
+
+# CLI
+argparse
+json
+
+# Logging
+logging
+
+# For MSSQL on Linux
+unixodbc-dev
