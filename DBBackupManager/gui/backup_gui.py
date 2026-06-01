@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QApplication, QMainWindow, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QListWidget,
     QListWidgetItem, QTabWidget, QGroupBox, QCheckBox, QSpinBox, QTimeEdit,
     QDateEdit, QMessageBox, QInputDialog, QFileDialog, QProgressBar,
@@ -1435,11 +1435,6 @@ class MainWindow(QMainWindow):
         self.timer.stop()
         
         event.accept()
-
-
-class QDialog(QDialog):
-    """Classe de base pour les dialogues (pour éviter les conflits)"""
-    pass
 
 
 if __name__ == "__main__":
