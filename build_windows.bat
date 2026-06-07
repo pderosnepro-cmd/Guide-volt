@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
 
 :: Install requirements
 echo Installing project requirements...
-pip install -r requirements.txt
+pip install -r DBBackupManager/requirements.txt
 
 :: Build the executable
 echo Building DBBackupManager executable...
