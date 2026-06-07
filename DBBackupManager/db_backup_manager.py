@@ -24,8 +24,10 @@ from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PROJECT_ROOT))
+from utils import get_project_root
+PROJECT_ROOT = get_project_root()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 class DatabaseType(Enum):

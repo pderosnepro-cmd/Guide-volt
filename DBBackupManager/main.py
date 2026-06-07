@@ -9,7 +9,8 @@ import argparse
 from pathlib import Path
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent
+from utils import get_project_root
+PROJECT_ROOT = get_project_root()
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
