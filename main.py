@@ -29,7 +29,7 @@ class BackupApp:
 
         ttk.Label(db_frame, text="Type:").grid(row=0, column=0, sticky="w")
         self.db_type_var = tk.StringVar(value="MySQL")
-        self.db_type_cb = ttk.Combobox(db_frame, textvariable=self.db_type_var, values=["MySQL", "PostgreSQL", "SQLite"])
+        self.db_type_cb = ttk.Combobox(db_frame, textvariable=self.db_type_var, values=["MySQL", "PostgreSQL", "MSSQL", "SQLite"])
         self.db_type_cb.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
 
         ttk.Label(db_frame, text="Hôte / Chemin (SQLite):").grid(row=1, column=0, sticky="w")

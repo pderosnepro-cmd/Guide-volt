@@ -84,6 +84,33 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
                     os.remove(filepath)
                 logging.error(f"Erreur pg_dump: {result.stderr}")
                 return False, f"Erreur PostgreSQL: {result.stderr}"
+
+        elif db_type == "MSSQL":
+            filename = f"{db_name}_mssql_{timestamp}.bak"
+            filepath = os.path.join(backup_dir, filename)
+
+            # Utilisation de sqlcmd pour MSSQL
+            # La commande SQL effectue un BACKUP DATABASE
+            sql_query = f"BACKUP DATABASE [{db_name}] TO DISK = N'{filepath}' WITH NOFORMAT, NOINIT, NAME = N'{db_name}-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, STATS = 10"
+
+            cmd = [
+                "sqlcmd",
+                "-S", f"{host},{port}" if port else host,
+                "-U", user,
+                "-P", password,
+                "-Q", sql_query
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode == 0 and not "Msg " in result.stderr:
+                logging.info(f"Sauvegarde MSSQL réussie: {filepath}")
+                return True, f"Succès: {filepath}"
+            else:
+                error_msg = result.stderr if result.stderr else result.stdout
+                logging.error(f"Erreur sqlcmd: {error_msg}")
+                return False, f"Erreur MSSQL: {error_msg}"
+
         else:
             return False, f"Type de base de données non supporté: {db_type}"
 
