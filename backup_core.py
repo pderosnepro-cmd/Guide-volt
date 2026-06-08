@@ -20,7 +20,7 @@ def discover_local_instances():
     common_ports = {
         3306: "MySQL/MariaDB",
         5432: "PostgreSQL",
-        1433: "MSSQL"
+        1433: "MSSQL (Défaut)"
     }
 
     for port, name in common_ports.items():
@@ -31,7 +31,32 @@ def discover_local_instances():
             instances.append((name, port))
         sock.close()
 
+    # Recherche spécifique MSSQL via sqlcmd -L
+    try:
+        result = subprocess.run(["sqlcmd", "-L"], capture_output=True)
+        if result.returncode == 0:
+            output = safe_decode(result.stdout)
+            lines = output.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and "Serveur" not in line and "Server" not in line:
+                    instances.append((f"MSSQL ({line})", "Dynamique"))
+    except Exception:
+        pass
+
     return instances
+
+def safe_decode(output_bytes):
+    """Décode la sortie d'un subprocess Windows proprement."""
+    if not output_bytes:
+        return ""
+    try:
+        return output_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            return output_bytes.decode('cp850')
+        except UnicodeDecodeError:
+            return output_bytes.decode('cp1252', errors='replace')
 
 def test_connection(db_type, host, port, user, password, db_name):
     """Test la connexion à la base de données."""
@@ -46,30 +71,32 @@ def test_connection(db_type, host, port, user, password, db_name):
             cmd = ["mysql", "-h", host, "-P", str(port), "-u", user, "-e", "SELECT 1"]
             if db_name:
                 cmd.insert(-2, db_name)
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True)
             if result.returncode == 0:
                 return True, "Connexion MySQL réussie."
-            return False, f"Erreur MySQL: {result.stderr}"
+            return False, f"Erreur MySQL: {safe_decode(result.stderr)}"
 
         elif db_type == "PostgreSQL":
             os.environ["PGPASSWORD"] = password
             cmd = ["psql", "-h", host, "-p", str(port), "-U", user, "-c", "SELECT 1"]
             if db_name:
                 cmd.extend(["-d", db_name])
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True)
             if result.returncode == 0:
                 return True, "Connexion PostgreSQL réussie."
-            return False, f"Erreur PostgreSQL: {result.stderr}"
+            return False, f"Erreur PostgreSQL: {safe_decode(result.stderr)}"
 
         elif db_type == "MSSQL":
             sql_query = "SELECT 1"
             cmd = ["sqlcmd", "-S", f"{host},{port}" if port else host, "-U", user, "-P", password, "-Q", sql_query]
             if db_name:
                 cmd.extend(["-d", db_name])
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode == 0 and not "Msg " in result.stderr:
+            result = subprocess.run(cmd, capture_output=True)
+            stderr_dec = safe_decode(result.stderr)
+            stdout_dec = safe_decode(result.stdout)
+            if result.returncode == 0 and not "Msg " in stderr_dec and not "Sqlcmd: Error:" in stderr_dec and not "Sqlcmd: erreur" in stderr_dec:
                 return True, "Connexion MSSQL réussie."
-            return False, f"Erreur MSSQL: {result.stderr if result.stderr else result.stdout}"
+            return False, f"Erreur MSSQL: {stderr_dec if stderr_dec else stdout_dec}"
 
         return False, "Type de BDD inconnu."
     except Exception as e:
@@ -109,8 +136,8 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
                 db_name
             ]
 
-            with open(filepath, "w") as outfile:
-                result = subprocess.run(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
+            with open(filepath, "wb") as outfile:
+                result = subprocess.run(cmd, stdout=outfile, stderr=subprocess.PIPE)
 
             if result.returncode == 0:
                 logging.info(f"Sauvegarde MySQL réussie: {filepath}")
@@ -118,8 +145,9 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
             else:
                 if os.path.exists(filepath):
                     os.remove(filepath)
-                logging.error(f"Erreur mysqldump: {result.stderr}")
-                return False, f"Erreur MySQL: {result.stderr}"
+                err_msg = safe_decode(result.stderr)
+                logging.error(f"Erreur mysqldump: {err_msg}")
+                return False, f"Erreur MySQL: {err_msg}"
 
         elif db_type == "PostgreSQL":
             filename = f"{db_name}_pg_{timestamp}.sql"
@@ -136,8 +164,8 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
                 "-F", "p" # Format texte pur (SQL)
             ]
 
-            with open(filepath, "w") as outfile:
-                result = subprocess.run(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
+            with open(filepath, "wb") as outfile:
+                result = subprocess.run(cmd, stdout=outfile, stderr=subprocess.PIPE)
 
             if result.returncode == 0:
                 logging.info(f"Sauvegarde PostgreSQL réussie: {filepath}")
@@ -145,8 +173,9 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
             else:
                 if os.path.exists(filepath):
                     os.remove(filepath)
-                logging.error(f"Erreur pg_dump: {result.stderr}")
-                return False, f"Erreur PostgreSQL: {result.stderr}"
+                err_msg = safe_decode(result.stderr)
+                logging.error(f"Erreur pg_dump: {err_msg}")
+                return False, f"Erreur PostgreSQL: {err_msg}"
 
         elif db_type == "MSSQL":
             filename = f"{db_name}_mssql_{timestamp}.bak"
@@ -164,13 +193,15 @@ def run_backup(db_type, host, port, user, password, db_name, backup_dir):
                 "-Q", sql_query
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True)
+            stderr_dec = safe_decode(result.stderr)
+            stdout_dec = safe_decode(result.stdout)
 
-            if result.returncode == 0 and not "Msg " in result.stderr:
+            if result.returncode == 0 and not "Msg " in stderr_dec and not "Sqlcmd: Error:" in stderr_dec and not "Sqlcmd: erreur" in stderr_dec:
                 logging.info(f"Sauvegarde MSSQL réussie: {filepath}")
                 return True, f"Succès: {filepath}"
             else:
-                error_msg = result.stderr if result.stderr else result.stdout
+                error_msg = stderr_dec if stderr_dec else stdout_dec
                 logging.error(f"Erreur sqlcmd: {error_msg}")
                 return False, f"Erreur MSSQL: {error_msg}"
 

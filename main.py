@@ -31,6 +31,7 @@ class BackupApp:
         self.db_type_var = tk.StringVar(value="MySQL")
         self.db_type_cb = ttk.Combobox(db_frame, textvariable=self.db_type_var, values=["MySQL", "PostgreSQL", "MSSQL", "SQLite"])
         self.db_type_cb.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
+        self.db_type_cb.bind("<<ComboboxSelected>>", self.on_db_type_change)
 
         ttk.Label(db_frame, text="Hôte / Chemin (SQLite):").grid(row=1, column=0, sticky="w")
         self.host_entry = ttk.Entry(db_frame)
@@ -104,6 +105,16 @@ class BackupApp:
 
         ttk.Button(self.root, text="Supprimer la tâche sélectionnée", command=self.remove_job).pack(pady=5)
 
+    def on_db_type_change(self, event=None):
+        db_type = self.db_type_var.get()
+        self.port_entry.delete(0, tk.END)
+        if db_type == "MySQL":
+            self.port_entry.insert(0, "3306")
+        elif db_type == "PostgreSQL":
+            self.port_entry.insert(0, "5432")
+        elif db_type == "MSSQL":
+            self.port_entry.insert(0, "1433")
+
     def find_instances(self):
         self.root.config(cursor="wait")
         self.root.update()
@@ -130,16 +141,30 @@ class BackupApp:
                 name, port = instances[sel[0]]
                 if "MySQL" in name:
                     self.db_type_var.set("MySQL")
+                    self.host_entry.delete(0, tk.END)
+                    self.host_entry.insert(0, "127.0.0.1")
+                    self.port_entry.delete(0, tk.END)
+                    self.port_entry.insert(0, str(port))
                 elif "PostgreSQL" in name:
                     self.db_type_var.set("PostgreSQL")
+                    self.host_entry.delete(0, tk.END)
+                    self.host_entry.insert(0, "127.0.0.1")
+                    self.port_entry.delete(0, tk.END)
+                    self.port_entry.insert(0, str(port))
                 elif "MSSQL" in name:
                     self.db_type_var.set("MSSQL")
+                    if port == "Dynamique":
+                        # Extraire le nom de l'instance "MSSQL (NOM_INSTANCE)"
+                        instance_name = name.replace("MSSQL (", "").replace(")", "")
+                        self.host_entry.delete(0, tk.END)
+                        self.host_entry.insert(0, instance_name)
+                        self.port_entry.delete(0, tk.END)
+                    else:
+                        self.host_entry.delete(0, tk.END)
+                        self.host_entry.insert(0, "127.0.0.1")
+                        self.port_entry.delete(0, tk.END)
+                        self.port_entry.insert(0, "1433")
 
-                self.host_entry.delete(0, tk.END)
-                self.host_entry.insert(0, "127.0.0.1")
-
-                self.port_entry.delete(0, tk.END)
-                self.port_entry.insert(0, str(port))
                 win.destroy()
 
         ttk.Button(win, text="Utiliser cette instance", command=on_select).pack(pady=10)
